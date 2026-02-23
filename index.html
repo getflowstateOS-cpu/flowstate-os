@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowState OS</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Safe fallbacks if Google Fonts don't load */
+  @font-face { font-family: 'Syne'; src: local('Georgia'); }
+  @font-face { font-family: 'DM Sans'; src: local('Helvetica Neue'), local('Arial'); }
+  @font-face { font-family: 'DM Mono'; src: local('Courier New'), local('monospace'); }
+</style>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#04040a;
+  --s1:#080814;
+  --s2:#0c0c1a;
+  --s3:#101020;
+  --border:rgba(255,255,255,0.06);
+  --border2:rgba(255,255,255,0.12);
+  --border3:rgba(255,255,255,0.2);
+  --v:#7c3aed;
+  --v2:#9333ea;
+  --v3:#a855f7;
+  --ind:#4f46e5;
+  --ind2:#6366f1;
+  --fuch:#d946ef;
+  --cyan:#06b6d4;
+  --em:#10b981;
+  --amb:#f59e0b;
+  --rose:#f43f5e;
+  --text:#f1f5f9;
+  --t2:#94a3b8;
+  --t3:#475569;
+  --t4:#1e293b;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:'DM Sans','Helvetica Neue',Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+  cursor:default;
+}
+
+/* CUSTOM CURSOR */
+.cursor{
+  position:fixed;width:10px;height:10px;
+  background:var(--v3);border-radius:50%;
+  pointer-events:none;z-index:9999;
+  transition:transform 0.15s ease;
+  mix-blend-mode:screen;
+}
+.cursor-ring{
+  position:fixed;width:36px;height:36px;
+  border:1.5px solid rgba(168,85,247,0.4);
+  border-radius:50%;pointer-events:none;z-index:9998;
+  transition:all 0.1s ease;
+}
+
+/* NOISE */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:10000;opacity:0.6;
+}
+
+/* AMBIENT ORBS */
+.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(80px);opacity:0.18;}
+.orb1{width:700px;height:700px;top:-200px;left:-200px;background:radial-gradient(circle,#6d28d9,transparent 70%);}
+.orb2{width:500px;height:500px;top:40%;right:-150px;background:radial-gradient(circle,#7c3aed,transparent 70%);}
+.orb3{width:600px;height:600px;bottom:-100px;left:30%;background:radial-gradient(circle,#4c1d95,transparent 70%);}
+.orb4{width:300px;height:300px;top:20%;left:50%;background:radial-gradient(circle,#d946ef,transparent 70%);opacity:0.08;}
+
+/* GRID BG */
+.grid-bg{
+  position:fixed;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(124,58,237,0.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(124,58,237,0.04) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%);
+}
+
+/* LAYOUT */
+.app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 2rem 6rem;}
+
+/* ═══ HEADER ═══ */
+.header{
+  padding:2.5rem 0 2rem;
+  display:grid;grid-template-columns:1fr auto;
+  align-items:center;gap:2rem;
+  opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.1s forwards;
+}
+.logo-area{display:flex;flex-direction:column;gap:0.6rem;}
+.logo-pill{
+  display:inline-flex;align-items:center;gap:0.5rem;
+  background:rgba(124,58,237,0.1);
+  border:1px solid rgba(124,58,237,0.2);
+  border-radius:100px;padding:0.3rem 1rem;
+  font-family:'DM Mono',monospace;font-size:0.65rem;
+  letter-spacing:0.15em;text-transform:uppercase;color:var(--v3);
+  width:fit-content;
+}
+.live-dot{
+  width:7px;height:7px;background:var(--em);border-radius:50%;
+  animation:livePulse 2s ease infinite;
+}
+.logo-name{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:clamp(3rem,6vw,5rem);
+  letter-spacing:-0.04em;line-height:0.9;
+  background:linear-gradient(135deg,#fff 0%,#c4b5fd 40%,#e879f9 80%,#f472b6 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.logo-sub{font-size:1rem;color:var(--t2);font-weight:400;letter-spacing:0.01em;}
+.header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:0.75rem;}
+.date-text{
+  font-family:'DM Mono',monospace;font-size:0.72rem;
+  color:var(--t3);letter-spacing:0.06em;
+}
+.streak-pill{
+  display:flex;align-items:center;gap:0.5rem;
+  background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.08));
+  border:1px solid rgba(245,158,11,0.2);
+  border-radius:100px;padding:0.45rem 1.1rem;
+  font-size:0.82rem;font-weight:600;color:var(--amb);
+}
+.pts-pill{
+  display:flex;align-items:center;gap:0.5rem;
+  background:rgba(124,58,237,0.1);
+  border:1px solid rgba(124,58,237,0.2);
+  border-radius:100px;padding:0.45rem 1.1rem;
+  font-size:0.82rem;font-weight:600;color:var(--v3);
+}
+
+/* ═══ ENERGY BAR ═══ */
+.energy-section{
+  margin-bottom:1.5rem;
+  opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.2s forwards;
+}
+.sec-label{
+  font-family:'DM Mono',monospace;font-size:0.6rem;
+  letter-spacing:0.18em;text-transform:uppercase;color:var(--t3);
+  margin-bottom:0.875rem;display:flex;align-items:center;gap:0.5rem;
+}
+.sec-label::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,var(--t4),transparent);
+}
+.energy-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.875rem;}
+.en-card{
+  position:relative;overflow:hidden;cursor:pointer;
+  padding:1.5rem;border-radius:20px;
+  background:var(--s1);border:1px solid var(--border);
+  transition:all 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+.en-card::before{
+  content:'';position:absolute;inset:0;border-radius:20px;opacity:0;
+  transition:opacity 0.3s ease;
+}
+.en-card.low::before{background:linear-gradient(135deg,rgba(100,116,139,0.12),transparent);}
+.en-card.med::before{background:linear-gradient(135deg,rgba(79,70,229,0.18),rgba(124,58,237,0.08));}
+.en-card.hi::before{background:linear-gradient(135deg,rgba(217,70,239,0.18),rgba(124,58,237,0.1));}
+.en-card::after{
+  content:'';position:absolute;
+  top:-50%;right:-30%;width:200px;height:200px;border-radius:50%;
+  opacity:0;transition:opacity 0.4s ease;filter:blur(40px);
+}
+.en-card.low::after{background:#64748b;}
+.en-card.med::after{background:#4f46e5;}
+.en-card.hi::after{background:#d946ef;}
+.en-card:hover::before,.en-card:hover::after,.en-card.active::before,.en-card.active::after{opacity:1;}
+.en-card:hover{transform:translateY(-3px);}
+.en-card.active{box-shadow:0 0 0 1px rgba(124,58,237,0.5),0 20px 60px rgba(124,58,237,0.2);}
+.en-card.active.low{box-shadow:0 0 0 1px rgba(100,116,139,0.5),0 20px 40px rgba(100,116,139,0.15);}
+.en-card.active.hi{box-shadow:0 0 0 1px rgba(217,70,239,0.5),0 20px 50px rgba(217,70,239,0.2);}
+.en-emoji{font-size:2rem;margin-bottom:0.75rem;display:block;position:relative;z-index:1;}
+.en-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;position:relative;z-index:1;margin-bottom:0.3rem;}
+.en-desc{font-size:0.75rem;color:var(--t2);line-height:1.5;position:relative;z-index:1;}
+.en-indicator{
+  position:absolute;top:1rem;right:1rem;
+  width:8px;height:8px;border-radius:50%;
+  border:2px solid var(--border2);transition:all 0.3s;
+}
+.en-card.active .en-indicator{background:var(--v3);border-color:var(--v3);box-shadow:0 0 10px var(--v3);}
+
+/* ═══ MAIN GRID ═══ */
+.main-grid{
+  display:grid;
+  grid-template-columns:1fr 340px;
+  gap:1rem;margin-bottom:1rem;
+}
+
+/* ═══ CARD BASE ═══ */
+.card{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:22px;padding:1.6rem;
+  position:relative;overflow:hidden;
+  transition:border-color 0.3s ease;
+}
+.card:hover{border-color:var(--border2);}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent);
+}
+.card-hd{
+  display:flex;align-items:center;gap:0.625rem;
+  margin-bottom:1.25rem;
+  font-family:'DM Mono',monospace;font-size:0.65rem;
+  letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);
+}
+.card-hd-icon{
+  width:28px;height:28px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:0.85rem;
+}
+.ic-violet{background:rgba(124,58,237,0.15);}
+.ic-em{background:rgba(16,185,129,0.12);}
+.ic-amb{background:rgba(245,158,11,0.12);}
+.ic-fuch{background:rgba(217,70,239,0.12);}
+.ic-rose{background:rgba(244,63,94,0.12);}
+.ic-cyan{background:rgba(6,182,212,0.12);}
+.ic-ind{background:rgba(79,70,229,0.15);}
+
+/* ═══ TASKS ═══ */
+.tasks-card{opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.3s forwards;}
+.task{
+  display:flex;align-items:center;gap:0.875rem;
+  padding:0.9rem 1rem;background:var(--s2);
+  border:1px solid var(--border);border-radius:14px;
+  margin-bottom:0.5rem;cursor:pointer;
+  transition:all 0.25s cubic-bezier(0.16,1,0.3,1);
+  position:relative;overflow:hidden;
+}
+.task::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;
+  width:3px;border-radius:0 2px 2px 0;transition:all 0.3s;
+}
+.task.crit::before{background:linear-gradient(180deg,var(--rose),#be123c);}
+.task.high::before{background:linear-gradient(180deg,var(--amb),#d97706);}
+.task.med::before{background:linear-gradient(180deg,var(--ind2),var(--v));}
+.task.low-p::before{background:linear-gradient(180deg,var(--em),#059669);}
+.task:hover{transform:translateX(4px);border-color:var(--border2);background:rgba(255,255,255,0.03);}
+.task.done{opacity:0.38;}
+.task.done .task-name{text-decoration:line-through;color:var(--t3);}
+.task-cb{
+  width:24px;height:24px;border-radius:50%;flex-shrink:0;
+  border:2px solid var(--border2);display:flex;
+  align-items:center;justify-content:center;
+  font-size:0.7rem;transition:all 0.25s ease;color:transparent;
+}
+.task:hover .task-cb{border-color:var(--em);}
+.task.done .task-cb{background:var(--em);border-color:var(--em);color:#fff;}
+.task-body{flex:1;min-width:0;}
+.task-name{font-size:0.9rem;font-weight:500;margin-bottom:0.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.task-tags{display:flex;gap:0.375rem;flex-wrap:wrap;}
+.badge{
+  font-family:'DM Mono',monospace;font-size:0.6rem;
+  padding:0.15rem 0.5rem;border-radius:5px;letter-spacing:0.04em;
+}
+.bc{background:rgba(244,63,94,0.12);color:var(--rose);}
+.bh{background:rgba(245,158,11,0.12);color:var(--amb);}
+.bm{background:rgba(99,102,241,0.12);color:#818cf8;}
+.bl{background:rgba(16,185,129,0.12);color:var(--em);}
+.bt{background:rgba(255,255,255,0.06);color:var(--t2);}
+.task-pts{
+  font-family:'DM Mono',monospace;font-size:0.68rem;
+  color:var(--amb);background:rgba(245,158,11,0.08);
+  border:1px solid rgba(245,158,11,0.15);
+  padding:0.2rem 0.5rem;border-radius:7px;white-space:nowrap;flex-shrink:0;
+}
+.add-btn{
+  width:100%;padding:0.875rem;background:transparent;
+  border:1px dashed rgba(255,255,255,0.1);
+  border-radius:14px;color:var(--t3);
+  font-family:'DM Sans','Helvetica Neue',Arial,sans-serif;font-size:0.85rem;
+  cursor:pointer;transition:all 0.2s ease;
+  display:flex;align-items:center;justify-content:center;gap:0.5rem;
+  margin-top:0.375rem;
+}
+.add-btn:hover{border-color:var(--v);color:var(--v3);background:rgba(124,58,237,0.05);}
+.divline{
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent);
+  margin:1.25rem 0;
+}
+.overdue-header{
+  display:flex;align-items:center;gap:0.5rem;
+  font-family:'DM Mono',monospace;font-size:0.6rem;
+  letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--rose);margin-bottom:0.75rem;
+}
+
+/* ═══ RIGHT COL ═══ */
+.right-col{display:flex;flex-direction:column;gap:1rem;}
+
+/* ═══ POINTS CARD ═══ */
+.pts-card{
+  opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.35s forwards;
+  background:linear-gradient(135deg,#0a0818,#0d0a1e);
+}
+.pts-main{text-align:center;padding:0.75rem 0 1rem;}
+.pts-num{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:4rem;letter-spacing:-0.05em;line-height:1;
+  background:linear-gradient(135deg,#fbbf24,#f97316,#ec4899);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.pts-sub{
+  font-family:'DM Mono',monospace;font-size:0.62rem;
+  letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--t3);margin-top:0.3rem;
+}
+.bar-wrap{
+  height:5px;background:rgba(255,255,255,0.05);
+  border-radius:100px;overflow:hidden;margin:0.875rem 0 0.5rem;
+}
+.bar-fill{
+  height:100%;border-radius:100px;
+  background:linear-gradient(90deg,#f59e0b,#f97316,#ec4899);
+  width:0;animation:barGrow 2s cubic-bezier(0.34,1.56,0.64,1) 0.8s forwards;
+  box-shadow:0 0 12px rgba(249,115,22,0.5);
+}
+@keyframes barGrow{to{width:52%;}}
+.bar-labels{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--t3);}
+.tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:0.375rem;margin-top:0.875rem;}
+.tier{
+  text-align:center;padding:0.6rem 0.25rem;
+  border-radius:10px;font-size:0.62rem;
+  font-family:'DM Mono',monospace;
+  transition:all 0.2s;cursor:default;
+}
+.tier .t-em{display:block;font-size:1rem;margin-bottom:0.2rem;}
+.tier .t-pt{display:block;font-size:0.55rem;opacity:0.6;margin-top:0.15rem;}
+.tier.br{background:rgba(205,127,50,0.1);color:#cd7f32;border:1px solid rgba(205,127,50,0.15);}
+.tier.si{background:rgba(192,192,192,0.08);color:#c0c0c0;border:1px solid rgba(192,192,192,0.12);}
+.tier.go{background:rgba(245,158,11,0.12);color:var(--amb);border:1px solid rgba(245,158,11,0.2);}
+.tier.pl{background:rgba(124,58,237,0.12);color:var(--v3);border:1px solid rgba(124,58,237,0.2);}
+.tier.active-t{
+  transform:scale(1.08);
+  box-shadow:0 0 20px currentColor,0 0 0 1px currentColor;
+}
+
+/* ═══ MOOD CARD ═══ */
+.mood-card{opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.4s forwards;}
+.mood-row{display:grid;grid-template-columns:repeat(5,1fr);gap:0.375rem;}
+.mood-btn{
+  aspect-ratio:1;border-radius:12px;
+  border:1px solid var(--border);background:var(--s2);
+  font-size:1.5rem;cursor:pointer;
+  transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  display:flex;align-items:center;justify-content:center;
+}
+.mood-btn:hover{transform:scale(1.2);border-color:var(--border2);}
+.mood-btn.sel{
+  border-color:var(--v);background:rgba(124,58,237,0.15);
+  box-shadow:0 0 20px rgba(124,58,237,0.3);transform:scale(1.12);
+}
+.mood-lbl{
+  text-align:center;font-family:'DM Mono',monospace;
+  font-size:0.65rem;color:var(--t3);margin-top:0.75rem;
+  min-height:1.2em;transition:all 0.3s;
+}
+
+/* ═══ BOTTOM GRID ═══ */
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem;}
+
+/* ═══ BRAIN DUMP ═══ */
+.dump-card{opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.45s forwards;}
+.dump-ta{
+  width:100%;min-height:130px;
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:14px;padding:1rem;
+  color:var(--text);font-family:'DM Sans','Helvetica Neue',Arial,sans-serif;
+  font-size:0.875rem;resize:none;outline:none;
+  transition:all 0.25s ease;line-height:1.65;
+}
+.dump-ta::placeholder{color:var(--t4);}
+.dump-ta:focus{border-color:rgba(124,58,237,0.4);box-shadow:0 0 0 3px rgba(124,58,237,0.08);}
+.dump-foot{display:flex;align-items:center;justify-content:space-between;margin-top:0.6rem;}
+.dump-hint{font-size:0.68rem;color:var(--t3);}
+.dump-cta{
+  font-size:0.75rem;font-weight:500;
+  padding:0.4rem 0.9rem;cursor:pointer;
+  background:rgba(124,58,237,0.12);
+  border:1px solid rgba(124,58,237,0.25);
+  border-radius:8px;color:var(--v3);
+  font-family:'DM Sans','Helvetica Neue',Arial,sans-serif;
+  transition:all 0.2s;
+}
+.dump-cta:hover{background:rgba(124,58,237,0.22);}
+
+/* ═══ STREAK ═══ */
+.streak-card{opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.5s forwards;}
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0.35rem;margin-bottom:1.1rem;}
+.sday{
+  aspect-ratio:1;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'DM Mono',monospace;font-size:0.58rem;font-weight:500;
+  opacity:0;transform:scale(0.4);
+}
+.sday.done{background:linear-gradient(135deg,var(--em),#059669);box-shadow:0 0 14px rgba(16,185,129,0.35);color:#fff;}
+.sday.today{background:linear-gradient(135deg,var(--v),var(--v2));box-shadow:0 0 18px rgba(124,58,237,0.45);color:#fff;animation:streakPulse 2s ease infinite;}
+.sday.empty{background:var(--s2);border:1px solid var(--border);color:var(--t4);}
+@keyframes streakPulse{0%,100%{box-shadow:0 0 18px rgba(124,58,237,0.45);}50%{box-shadow:0 0 30px rgba(124,58,237,0.7);}}
+.streak-big{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:3.5rem;letter-spacing:-0.05em;line-height:1;
+  background:linear-gradient(135deg,var(--em),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.streak-lbl{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--t3);margin-top:0.25rem;letter-spacing:0.05em;}
+.streak-next{
+  margin-top:0.875rem;font-size:0.73rem;color:var(--t2);
+  line-height:1.5;
+  background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.12);
+  border-radius:10px;padding:0.6rem 0.75rem;
+}
+
+/* ═══ NAV CARD ═══ */
+.nav-card{opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.55s forwards;}
+.nav-item{
+  display:flex;align-items:center;gap:0.75rem;
+  padding:0.65rem 0.75rem;border-radius:12px;
+  cursor:pointer;transition:all 0.2s ease;
+  margin-bottom:0.2rem;
+}
+.nav-item:hover{background:rgba(255,255,255,0.04);padding-left:1rem;}
+.nav-ico{
+  width:34px;height:34px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:0.95rem;flex-shrink:0;
+}
+.nav-body{flex:1;}
+.nav-nm{font-size:0.82rem;font-weight:500;margin-bottom:0.1rem;}
+.nav-ds{font-size:0.67rem;color:var(--t3);}
+.nav-arr{color:var(--t4);font-size:0.8rem;transition:all 0.2s;}
+.nav-item:hover .nav-arr{transform:translateX(4px);color:var(--t2);}
+
+/* ═══ ACTIONS ROW ═══ */
+.actions-row{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1rem;margin-bottom:1rem;
+  opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.6s forwards;
+}
+.act-card{
+  padding:1.4rem 1.2rem;border-radius:20px;
+  border:1px solid var(--border);background:var(--s1);
+  cursor:pointer;text-align:center;
+  transition:all 0.3s cubic-bezier(0.16,1,0.3,1);
+  position:relative;overflow:hidden;
+}
+.act-card::before{
+  content:'';position:absolute;inset:0;opacity:0;
+  transition:opacity 0.3s;border-radius:20px;
+}
+.act-card.a1::before{background:linear-gradient(135deg,rgba(217,70,239,0.15),rgba(124,58,237,0.08));}
+.act-card.a2::before{background:linear-gradient(135deg,rgba(244,63,94,0.12),rgba(245,158,11,0.06));}
+.act-card.a3::before{background:linear-gradient(135deg,rgba(6,182,212,0.1),rgba(79,70,229,0.08));}
+.act-card.a4::before{background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(244,63,94,0.06));}
+.act-card:hover::before{opacity:1;}
+.act-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 20px 60px rgba(0,0,0,0.4);}
+.act-card:active{transform:translateY(-1px);}
+.act-ico{font-size:2rem;display:block;margin-bottom:0.7rem;}
+.act-nm{font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;margin-bottom:0.25rem;}
+.act-ds{font-size:0.68rem;color:var(--t2);line-height:1.35;}
+
+/* ═══ MANIFESTO ═══ */
+.manifesto{
+  opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.65s forwards;
+  margin-bottom:1rem;
+}
+.man-card{
+  background:linear-gradient(135deg,rgba(79,70,229,0.06),rgba(124,58,237,0.04),rgba(217,70,239,0.03));
+  border:1px solid rgba(124,58,237,0.12);
+  border-radius:24px;padding:2.5rem;
+  display:grid;grid-template-columns:1fr auto;gap:3rem;align-items:center;
+  position:relative;overflow:hidden;
+}
+.man-card::before{
+  content:'';position:absolute;
+  top:-60%;right:-5%;width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,rgba(217,70,239,0.06),transparent 70%);
+  pointer-events:none;
+}
+.man-card::after{
+  content:'';position:absolute;
+  bottom:-40%;left:20%;width:300px;height:300px;border-radius:50%;
+  background:radial-gradient(circle,rgba(79,70,229,0.08),transparent 70%);
+  pointer-events:none;
+}
+.man-q{
+  font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;
+  line-height:1.3;letter-spacing:-0.02em;position:relative;z-index:1;
+}
+.man-q span{
+  background:linear-gradient(135deg,#a5b4fc,#e879f9);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.man-s{font-size:0.875rem;color:var(--t2);margin-top:0.6rem;line-height:1.7;position:relative;z-index:1;}
+.chips{display:flex;flex-direction:column;gap:0.5rem;min-width:210px;position:relative;z-index:1;}
+.chip{
+  padding:0.5rem 1rem;border-radius:100px;
+  font-size:0.73rem;font-weight:500;
+  display:flex;align-items:center;gap:0.5rem;
+  white-space:nowrap;
+}
+.ch1{background:rgba(79,70,229,0.12);color:#a5b4fc;border:1px solid rgba(79,70,229,0.18);}
+.ch2{background:rgba(16,185,129,0.1);color:var(--em);border:1px solid rgba(16,185,129,0.18);}
+.ch3{background:rgba(245,158,11,0.1);color:var(--amb);border:1px solid rgba(245,158,11,0.18);}
+.ch4{background:rgba(217,70,239,0.1);color:#e879f9;border:1px solid rgba(217,70,239,0.18);}
+
+/* ═══ FOOTER ═══ */
+footer{
+  text-align:center;padding:2rem 0;
+  opacity:0;animation:riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.75s forwards;
+}
+.foot-brand{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;
+  letter-spacing:0.05em;
+  background:linear-gradient(135deg,#c4b5fd,#e879f9);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.foot-tag{font-size:0.75rem;color:var(--t3);margin-top:0.3rem;}
+
+/* ═══ TOAST ═══ */
+.toast{
+  position:fixed;bottom:2rem;right:2rem;
+  background:var(--s2);
+  border:1px solid rgba(16,185,129,0.25);
+  border-radius:16px;padding:1rem 1.25rem;
+  display:flex;align-items:center;gap:0.75rem;
+  font-size:0.875rem;font-weight:500;color:var(--em);
+  box-shadow:0 20px 60px rgba(0,0,0,0.6),0 0 0 1px rgba(16,185,129,0.1);
+  transform:translateY(120px) scale(0.9);opacity:0;
+  transition:all 0.5s cubic-bezier(0.34,1.56,0.64,1);z-index:9990;
+  max-width:320px;
+}
+.toast.show{transform:translateY(0) scale(1);opacity:1;}
+
+/* ═══ SCROLL REVEAL ═══ */
+.reveal{opacity:0;transform:translateY(24px);transition:all 0.8s cubic-bezier(0.16,1,0.3,1);}
+.reveal.visible{opacity:1;transform:translateY(0);}
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes riseUp{
+  from{opacity:0;transform:translateY(28px);}
+  to{opacity:1;transform:translateY(0);}
+}
+@keyframes livePulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.5);}
+  50%{box-shadow:0 0 0 5px rgba(16,185,129,0);}
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:10px;}
+
+/* RESPONSIVE */
+@media(max-width:1100px){
+  .main-grid{grid-template-columns:1fr;}
+  .right-col{display:grid;grid-template-columns:1fr 1fr;}
+}
+@media(max-width:800px){
+  .bottom-grid{grid-template-columns:1fr;}
+  .actions-row{grid-template-columns:repeat(2,1fr);}
+  .man-card{grid-template-columns:1fr;}
+  .chips{flex-direction:row;flex-wrap:wrap;}
+  .energy-row{grid-template-columns:1fr;}
+}
+@media(max-width:540px){
+  .app{padding:0 1rem 4rem;}
+  .actions-row{grid-template-columns:repeat(2,1fr);}
+  .right-col{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="cursor" id="cur"></div>
+<div class="cursor-ring" id="ring"></div>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+<div class="orb orb4"></div>
+<div class="grid-bg"></div>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo-area">
+      <div class="logo-pill"><span class="live-dot"></span>ADHD Operating System · Active</div>
+      <div class="logo-name">FlowState OS</div>
+      <div class="logo-sub">Built for your brain. Not against it.</div>
+    </div>
+    <div class="header-meta">
+      <div class="date-text" id="liveDate"></div>
+      <div class="streak-pill">🔥 <span id="streakN">7</span> Day Streak</div>
+      <div class="pts-pill">⚡ <span id="ptsN">127</span> pts this week</div>
+    </div>
+  </header>
+
+  <!-- ENERGY MODE -->
+  <div class="energy-section">
+    <div class="sec-label">// Today's Energy Mode</div>
+    <div class="energy-row">
+      <div class="en-card low" onclick="setEnergy(this,'🔋 Low Energy Mode')">
+        <div class="en-indicator"></div>
+        <span class="en-emoji">🔋</span>
+        <div class="en-title">Low Energy</div>
+        <div class="en-desc">Gentle tasks only. Quick wins. Protect yourself today.</div>
+      </div>
+      <div class="en-card med active" onclick="setEnergy(this,'⚡ Medium Energy Mode')">
+        <div class="en-indicator"></div>
+        <span class="en-emoji">⚡</span>
+        <div class="en-title">Medium Energy</div>
+        <div class="en-desc">Standard operations. Mix of tasks. Steady progress.</div>
+      </div>
+      <div class="en-card hi" onclick="setEnergy(this,'🚀 High Energy Mode')">
+        <div class="en-indicator"></div>
+        <span class="en-emoji">🚀</span>
+        <div class="en-title">High Energy</div>
+        <div class="en-desc">Build something great. Hyperfocus is fully online.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- TASKS -->
+    <div class="card tasks-card">
+      <div class="card-hd">
+        <div class="card-hd-icon ic-violet">🎯</div>
+        Today's Top 3
+      </div>
+
+      <div class="task crit" onclick="toggleTask(this)">
+        <div class="task-cb">✓</div>
+        <div class="task-body">
+          <div class="task-name">Set up FlowState OS completely</div>
+          <div class="task-tags">
+            <span class="badge bc">Critical</span>
+            <span class="badge bt">⚡ 15 min</span>
+            <span class="badge bt">Admin</span>
+          </div>
+        </div>
+        <div class="task-pts">+15 pts</div>
+      </div>
+
+      <div class="task high" onclick="toggleTask(this)">
+        <div class="task-cb"></div>
+        <div class="task-body">
+          <div class="task-name">Log mood & energy in tracker</div>
+          <div class="task-tags">
+            <span class="badge bh">High</span>
+            <span class="badge bt">⚡ &lt;5 min</span>
+            <span class="badge bt">Health</span>
+          </div>
+        </div>
+        <div class="task-pts">+3 pts</div>
+      </div>
+
+      <div class="task med" onclick="toggleTask(this)">
+        <div class="task-cb"></div>
+        <div class="task-body">
+          <div class="task-name">Try first 25-min Hyperfocus session</div>
+          <div class="task-tags">
+            <span class="badge bm">Medium</span>
+            <span class="badge bt">🕐 30 min</span>
+            <span class="badge bt">Work</span>
+          </div>
+        </div>
+        <div class="task-pts">+8 pts</div>
+      </div>
+
+      <button class="add-btn" onclick="toast('✅ Opening Smart Task Engine...')">
+        + Add Task to Engine
+      </button>
+
+      <div class="divline"></div>
+
+      <div class="overdue-header">⚠️ Overdue Rescue</div>
+
+      <div class="task high" style="border-color:rgba(244,63,94,0.15);background:rgba(244,63,94,0.03);" onclick="toggleTask(this)">
+        <div class="task-cb"></div>
+        <div class="task-body">
+          <div class="task-name">Weekly review — from last week</div>
+          <div class="task-tags">
+            <span class="badge bc">🔴 2 Days Overdue</span>
+          </div>
+        </div>
+        <div class="task-pts">+10 pts</div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+
+      <!-- POINTS -->
+      <div class="card pts-card">
+        <div class="card-hd">
+          <div class="card-hd-icon ic-amb">⚡</div>
+          Dopamine Points
+        </div>
+        <div class="pts-main">
+          <div class="pts-num" id="bigPts">127</div>
+          <div class="pts-sub">Points This Week</div>
+        </div>
+        <div class="bar-wrap"><div class="bar-fill"></div></div>
+        <div class="bar-labels">
+          <span>🥈 Silver ✓</span>
+          <span>🥇 Gold at 150</span>
+        </div>
+        <div class="tiers">
+          <div class="tier br"><span class="t-em">🥉</span>Bronze<span class="t-pt">25 pts</span></div>
+          <div class="tier si active-t"><span class="t-em">🥈</span>Silver<span class="t-pt">75 pts</span></div>
+          <div class="tier go"><span class="t-em">🥇</span>Gold<span class="t-pt">150 pts</span></div>
+          <div class="tier pl"><span class="t-em">💎</span>Plat.<span class="t-pt">300 pts</span></div>
+        </div>
+      </div>
+
+      <!-- MOOD -->
+      <div class="card mood-card">
+        <div class="card-hd">
+          <div class="card-hd-icon ic-em">😌</div>
+          Mood Check-In
+        </div>
+        <div class="mood-row">
+          <div class="mood-btn" onclick="setMood(this,'😩 Terrible')">😩</div>
+          <div class="mood-btn" onclick="setMood(this,'😕 Low')">😕</div>
+          <div class="mood-btn sel" onclick="setMood(this,'😐 Neutral')">😐</div>
+          <div class="mood-btn" onclick="setMood(this,'🙂 Good')">🙂</div>
+          <div class="mood-btn" onclick="setMood(this,'😄 Great')">😄</div>
+        </div>
+        <div class="mood-lbl" id="moodLbl">😐 Neutral — Logged to Tracker</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- QUICK ACTIONS -->
+  <div class="actions-row">
+    <div class="act-card a1" onclick="toast('🔥 Hyperfocus Mode activated! Timer started — 25 min session.')">
+      <span class="act-ico">🔥</span>
+      <div class="act-nm">Focus Sprint</div>
+      <div class="act-ds">25 / 50 / 90 min<br>deep work sessions</div>
+    </div>
+    <div class="act-card a2" onclick="toast('🆘 Rescue Mode opened. Follow the 5-step protocol. You\'ve got this.')">
+      <span class="act-ico">🆘</span>
+      <div class="act-nm">I&apos;m Stuck</div>
+      <div class="act-ds">5-min executive<br>dysfunction reboot</div>
+    </div>
+    <div class="act-card a3" onclick="document.getElementById('dumpTa').focus()">
+      <span class="act-ico">🧠</span>
+      <div class="act-nm">Brain Dump</div>
+      <div class="act-ds">Clear mental cache<br>instantly</div>
+    </div>
+    <div class="act-card a4" onclick="toast('🏆 127 pts = Silver Tier UNLOCKED! Time to claim your reward.')">
+      <span class="act-ico">🏆</span>
+      <div class="act-nm">My Rewards</div>
+      <div class="act-ds">Silver tier unlocked<br>Claim now!</div>
+    </div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div class="bottom-grid">
+
+    <!-- BRAIN DUMP -->
+    <div class="card dump-card">
+      <div class="card-hd">
+        <div class="card-hd-icon ic-cyan">🧠</div>
+        Brain Dump
+      </div>
+      <textarea class="dump-ta" id="dumpTa" placeholder="Everything in your head right now...&#10;&#10;Don't organize. Don't filter. Just get it ALL out. Thoughts, worries, random things you just remembered — everything."></textarea>
+      <div class="dump-foot">
+        <span class="dump-hint">Dump → then sort into Task Engine</span>
+        <button class="dump-cta" onclick="toast('✅ Thoughts captured! Now open Smart Task Engine to convert to tasks.')">Convert to Tasks →</button>
+      </div>
+    </div>
+
+    <!-- STREAK -->
+    <div class="card streak-card">
+      <div class="card-hd">
+        <div class="card-hd-icon ic-em">🔥</div>
+        Streak Tracker
+      </div>
+      <div class="week-grid">
+        <div class="sday done">Mo</div>
+        <div class="sday done">Tu</div>
+        <div class="sday done">We</div>
+        <div class="sday done">Th</div>
+        <div class="sday done">Fr</div>
+        <div class="sday done">Sa</div>
+        <div class="sday today">Su</div>
+      </div>
+      <div class="streak-big">7</div>
+      <div class="streak-lbl">Days in a Row 🔥</div>
+      <div class="streak-next">
+        Next milestone: <strong style="color:var(--amb)">14 days → +25 bonus pts</strong><br>
+        <span style="color:var(--t3);font-size:0.67rem">Keep showing up. Every day counts.</span>
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <div class="card nav-card">
+      <div class="card-hd">
+        <div class="card-hd-icon ic-ind">🗂️</div>
+        System Navigation
+      </div>
+      <div class="nav-item" onclick="toast('Opening Smart Task Engine...')">
+        <div class="nav-ico ic-violet">⚡</div>
+        <div class="nav-body"><div class="nav-nm">Smart Task Engine</div><div class="nav-ds">All tasks + 8 smart views</div></div>
+        <div class="nav-arr">→</div>
+      </div>
+      <div class="nav-item" onclick="toast('Opening Emotional Tracker...')">
+        <div class="nav-ico ic-em">😌</div>
+        <div class="nav-body"><div class="nav-nm">Mood Tracker</div><div class="nav-ds">Daily emotional log</div></div>
+        <div class="nav-arr">→</div>
+      </div>
+      <div class="nav-item" onclick="toast('Opening Hyperfocus Sessions...')">
+        <div class="nav-ico ic-fuch">🔥</div>
+        <div class="nav-body"><div class="nav-nm">Hyperfocus Sessions</div><div class="nav-ds">Deep work logs</div></div>
+        <div class="nav-arr">→</div>
+      </div>
+      <div class="nav-item" onclick="toast('Opening Reward Ledger...')">
+        <div class="nav-ico ic-amb">🏆</div>
+        <div class="nav-body"><div class="nav-nm">Reward Ledger</div><div class="nav-ds">Points & tier rewards</div></div>
+        <div class="nav-arr">→</div>
+      </div>
+      <div class="nav-item" onclick="toast('Opening Weekly Reset...')">
+        <div class="nav-ico ic-cyan">📆</div>
+        <div class="nav-body"><div class="nav-nm">Weekly Reset</div><div class="nav-ds">CEO-level review</div></div>
+        <div class="nav-arr">→</div>
+      </div>
+      <div class="nav-item" onclick="toast('Opening Rescue Mode...')">
+        <div class="nav-ico ic-rose">🆘</div>
+        <div class="nav-body"><div class="nav-nm">Rescue Mode</div><div class="nav-ds">Executive dysfunction reset</div></div>
+        <div class="nav-arr">→</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANIFESTO -->
+  <div class="manifesto">
+    <div class="man-card">
+      <div>
+        <div class="man-q">Your brain isn't broken.<br><span>Your system was.</span></div>
+        <div class="man-s">FlowState OS is engineered around how ADHD brains actually work — dopamine-first design, energy-aware filtering, momentum-based structure, and emotional intelligence baked in at every layer.</div>
+      </div>
+      <div class="chips">
+        <div class="chip ch1">⚡ Dopamine-first design</div>
+        <div class="chip ch2">🧠 Zero overwhelm architecture</div>
+        <div class="chip ch3">🔥 Momentum-based structure</div>
+        <div class="chip ch4">💜 Emotional intelligence</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="foot-brand">FLOWSTATE OS</div>
+    <div class="foot-tag">Because your brain deserves infrastructure, not shame.</div>
+  </footer>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toastEl">
+  <span>✅</span>
+  <span id="toastMsg">Done</span>
+</div>
+
+<script>
+// CURSOR
+const cur=document.getElementById('cur'),ring=document.getElementById('ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX;my=e.clientY;
+  cur.style.left=mx-5+'px';cur.style.top=my-5+'px';
+});
+setInterval(()=>{
+  rx+=(mx-rx)*0.12;ry+=(my-ry)*0.12;
+  ring.style.left=rx-18+'px';ring.style.top=ry-18+'px';
+},16);
+
+// DATE
+const d=new Date();
+document.getElementById('liveDate').textContent=d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+
+// ENERGY
+function setEnergy(el,label){
+  document.querySelectorAll('.en-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  toast('⚡ Energy mode: '+label);
+}
+
+// TASK TOGGLE
+let pts=127;
+function toggleTask(el){
+  el.classList.toggle('done');
+  if(el.classList.contains('done')){
+    el.querySelector('.task-cb').textContent='✓';
+    const p=el.querySelector('.task-pts').textContent;
+    pts+=5;
+    document.getElementById('bigPts').textContent=pts;
+    document.getElementById('ptsN').textContent=pts;
+    toast('✅ Task done! Earned '+p);
+  } else {
+    el.querySelector('.task-cb').textContent='';
+  }
+}
+
+// MOOD
+function setMood(el,label){
+  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('moodLbl').textContent=label+' — Logged';
+  toast('😌 Mood: '+label);
+}
+
+// TOAST
+let tt;
+function toast(msg){
+  const el=document.getElementById('toastEl');
+  document.getElementById('toastMsg').textContent=msg;
+  el.classList.add('show');
+  clearTimeout(tt);
+  tt=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// STREAK ANIMATION
+document.querySelectorAll('.sday').forEach((d,i)=>{
+  setTimeout(()=>{
+    d.style.transition='all 0.5s cubic-bezier(0.34,1.56,0.64,1)';
+    d.style.opacity='1';
+    d.style.transform='scale(1)';
+  },700+i*90);
+});
+
+// SCROLL REVEAL
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});
+},{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+</script>
+</body>
+</html>
